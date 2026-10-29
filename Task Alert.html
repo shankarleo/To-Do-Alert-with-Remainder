@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Task Manager</title>
+<style>
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface-2:#f5f7f9; --text:#18212e; --muted:#5a6676; --border:#d6dce3;
+  --accent:#1d4f73; --accent-hover:#163d59; --accent-text:#ffffff; --focus:#2f7fbf;
+  --high:#a3261c; --high-bg:#fbe7e5; --med:#8f5300; --med-bg:#fdf0d9; --low:#2c6a3b; --low-bg:#e2f2e6;
+  --ns:#526070; --ns-bg:#e9edf1; --prog:#1d4f73; --prog-bg:#e0ecf6; --done:#2c6a3b; --done-bg:#e2f2e6; --blk:#6f2a86; --blk-bg:#f1e5f6;
+  --warn-bg:#fff5df; --warn-border:#d9a441; --warn-text:#6b4a00; --info-bg:#e6f0f8; --info-border:#8fb5d6;
+  --track:#dde3ea; --now:#a3261c;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12171e; --surface:#1a212b; --surface-2:#212a36; --text:#e6ebf1; --muted:#9aa7b6; --border:#2f3a48;
+    --accent:#6fa8d6; --accent-hover:#8bbde3; --accent-text:#0e1620; --focus:#8bbde3;
+    --high:#f19a90; --high-bg:#3a1f1d; --med:#f0c374; --med-bg:#3a2d15; --low:#8fd3a0; --low-bg:#1b3324;
+    --ns:#b3bfcc; --ns-bg:#2a3441; --prog:#8bbde3; --prog-bg:#1c3247; --done:#8fd3a0; --done-bg:#1b3324; --blk:#d6a5e8; --blk-bg:#33213d;
+    --warn-bg:#3a2e14; --warn-border:#a07a2c; --warn-text:#f3d58f; --info-bg:#1b2c3c; --info-border:#3c6488;
+    --track:#2f3a48; --now:#f19a90;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 18px 48px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+h1{font-size:22px;margin:0;font-weight:650;letter-spacing:-.01em}
+h2{font-size:17px;margin:0 0 12px;font-weight:650}
+h3{font-size:15px;margin:18px 0 8px;font-weight:650}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.clock{text-align:right}
+.clock .time{font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+
+/* Day timeline: the signature element */
+.timeline{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:14px}
+.tl-track{position:relative;height:34px;margin:4px 0 2px}
+.tl-bar{position:absolute;left:0;right:0;top:14px;height:6px;border-radius:3px;background:var(--track)}
+.tl-fill{position:absolute;left:0;top:14px;height:6px;border-radius:3px;background:var(--accent);opacity:.55}
+.tl-now{position:absolute;top:4px;width:2px;height:26px;background:var(--now);transform:translateX(-1px)}
+.tl-eod{position:absolute;top:2px;width:0;height:30px;border-left:2px dashed var(--accent)}
+.tl-tick{position:absolute;top:10px;width:10px;height:14px;border-radius:2px;transform:translateX(-5px);border:2px solid var(--surface)}
+.tl-labels{position:relative;height:18px;font-size:12px;color:var(--muted)}
+.tl-labels span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.tl-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:4px}
+.tl-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+.banner{border-radius:8px;padding:11px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.banner.warn{background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text)}
+.banner.info{background:var(--info-bg);border:1px solid var(--info-border)}
+.banner .acts{display:flex;gap:8px}
+
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:6px 0 16px;overflow-x:auto}
+nav.tabs button{background:none;border:none;padding:10px 14px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+
+.grid{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:18px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.field .hint{font-size:12px;color:var(--muted);margin-top:3px}
+input[type=text],input[type=email],input[type=time],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2)}
+textarea{resize:vertical;min-height:58px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-text);padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600}
+.btn:hover{background:var(--accent-hover)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.ghost:hover{background:var(--surface-2)}
+.btn.sm{padding:4px 10px;font-size:13px;font-weight:500}
+.btn.danger{border-color:var(--high);color:var(--high);background:transparent}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.err{color:var(--high);font-size:13px;margin-top:6px}
+
+.chip{display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.p-High{background:var(--high-bg);color:var(--high)} .p-Medium{background:var(--med-bg);color:var(--med)} .p-Low{background:var(--low-bg);color:var(--low)}
+
+.group{margin-bottom:18px}
+.group-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.task{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px}
+.task.pr-High{border-left-color:var(--high)} .task.pr-Medium{border-left-color:var(--med)} .task.pr-Low{border-left-color:var(--low)}
+.task.is-done{opacity:.78}
+.task-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.rank{font-weight:700;color:var(--muted);min-width:20px;font-variant-numeric:tabular-nums}
+.task-name{font-weight:600}
+.task-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center}
+.why{font-size:12.5px;color:var(--muted);margin-top:5px}
+.task-desc{font-size:13.5px;margin-top:6px;white-space:pre-wrap}
+.task-ctrl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.task-ctrl select{width:auto;padding:4px 8px;font-size:13px}
+select.st{font-weight:600;border-width:1px}
+.st-ns{background:var(--ns-bg)!important;color:var(--ns)!important}
+.st-ip{background:var(--prog-bg)!important;color:var(--prog)!important}
+.st-dn{background:var(--done-bg)!important;color:var(--done)!important}
+.st-bk{background:var(--blk-bg)!important;color:var(--blk)!important}
+.inline-note{margin-top:8px}
+.inline-note input{font-size:13px;padding:6px 8px}
+.overdue{color:var(--high);font-weight:600;font-size:12.5px}
+.empty{border:1px dashed var(--border);border-radius:8px;padding:22px;text-align:center;color:var(--muted)}
+
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--surface-2);border-radius:8px;padding:10px 12px}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:12.5px;color:var(--muted);font-weight:600}
+td select{width:auto;padding:4px 8px;font-size:13px}
+.confirm-box{display:flex;gap:10px;align-items:flex-start;margin:14px 0 6px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)}
+.confirm-box input{margin-top:4px;width:16px;height:16px}
+pre.email{white-space:pre-wrap;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:inherit;font-size:14px;margin:8px 0 0;max-height:520px;overflow:auto}
+.kv{display:grid;grid-template-columns:90px 1fr;gap:4px 10px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;word-break:break-word}
+.log li{margin-bottom:4px;font-size:13.5px}
+.ok{color:var(--done);font-weight:600} .bad{color:var(--high);font-weight:600}
+.insight{padding:10px 12px;border-left:3px solid var(--accent);background:var(--surface-2);border-radius:0 6px 6px 0;margin-bottom:8px;font-size:14px}
+.save-status{font-size:12px;color:var(--muted);min-height:16px}
+@media (prefers-reduced-motion:no-preference){.task{transition:border-color .2s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Daily Task Manager</h1>
+      <div class="muted" id="dateLine">Loading…</div>
+    </div>
+    <div class="clock">
+      <div class="time" id="clockTime">--:--</div>
+      <div class="muted small">India Standard Time</div>
+    </div>
+  </header>
+  <section class="timeline" id="timeline" aria-label="Today's timeline"></section>
+  <div id="banners"></div>
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <main id="view"></main>
+  <div class="save-status" id="saveStatus"></div>
+</div>
+
+<script>
+const PRI_W = {High:30, Medium:20, Low:10};
+const STATUSES = ['Not Started','In Progress','Completed','Blocked'];
+const ST_CLASS = {'Not Started':'st-ns','In Progress':'st-ip','Completed':'st-dn','Blocked':'st-bk'};
+const EOD_MIN = 18*60;
+const TL_START = 8*60, TL_END = 21*60;
+
+const state = {
+  settings:{name:'', email:'', cc:'', signoff:'Regards'},
+  day:null, history:{days:{}}, tab:'today', editingId:null,
+  confirmChecked:false, sendMsg:null, loaded:false, prevCarry:null
+};
+
+/* ---------- time helpers (IST) ---------- */
+function ist(d=new Date()){
+  const f = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+  const p = Object.fromEntries(f.formatToParts(d).map(x=>[x.type,x.value]));
+  const h = (+p.hour)%24, m = +p.minute;
+  return {date:`${p.year}-${p.month}-${p.day}`, h, m, mins:h*60+m};
+}
+const todayKey = ()=>ist().date;
+const nowMins = ()=>ist().mins;
+function hhmm(mins){const h=Math.floor(mins/60), m=mins%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;}
+function toMins(t){ if(!t) return null; const [h,m]=t.split(':').map(Number); return h*60+m; }
+function fmt12(t){ if(!t) return ''; let [h,m]=t.split(':').map(Number); const ap=h>=12?'PM':'AM'; h=h%12||12; return `${h}:${String(m).padStart(2,'0')} ${ap}`; }
+function fmtDateLong(key){ return new Date(key+'T12:00:00+05:30').toLocaleDateString('en-GB',{timeZone:'Asia/Kolkata',weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
+function fmtDateSubject(key){ return new Date(key+'T12:00:00+05:30').toLocaleDateString('en-GB',{timeZone:'Asia/Kolkata',day:'numeric',month:'long',year:'numeric'}); }
+function fmtDateShort(key){ return new Date(key+'T12:00:00+05:30').toLocaleDateString('en-GB',{timeZone:'Asia/Kolkata',weekday:'short',day:'numeric',month:'short'}); }
+function dur(mins){ const a=Math.abs(mins), h=Math.floor(a/60), m=a%60; return h? `${h}h ${m}m` : `${m}m`; }
+
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+/* ---------- storage ---------- */
+const PREFIX='dtm:';
+async function sget(key){ try{ const v = localStorage.getItem(PREFIX+key); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+async function sset(key,val){ try{ localStorage.setItem(PREFIX+key, JSON.stringify(val)); return true; }catch(e){ console.error('Storage error',e); return false; } }
+function allKeys(){ const k=[]; for(let i=0;i<localStorage.length;i++){ const x=localStorage.key(i); if(x&&x.startsWith(PREFIX)) k.push(x); } return k; }
+let saveTimer=null;
+function persist(){
+  clearTimeout(saveTimer);
+  setSave('Saving…');
+  saveTimer = setTimeout(async ()=>{
+    state.history.days[state.day.date] = summarize(state.day);
+    const a = await sset('day:'+state.day.date, state.day);
+    const b = await sset('history', state.history);
+    setSave(a&&b ? 'All changes saved' : 'Could not save. Your browser may be blocking storage or be full.');
+  },400);
+}
+function setSave(t){ document.getElementById('saveStatus').textContent=t; }
+
+function newDay(date){ return {date, tasks:[], confirmedAt:null, report:null, emailLog:[], importedFrom:null, carryDismissed:false}; }
+function summarize(day){
+  const s = stats(day);
+  return {date:day.date, ...s, reportReady: !!(day.report && !day.report.stale), emailed: (day.emailLog||[]).some(e=>e.sent),
+    tasks: day.tasks.map(t=>({name:t.name, priority:t.priority, status:t.status, carryCount:t.carryCount||0, deadline:t.deadline, completedAt:t.completedAt, blockedReason:t.blockedReason}))};
+}
+function stats(day){
+  const T=day.tasks, total=T.length;
+  const completed=T.filter(t=>t.status==='Completed').length;
+  const blocked=T.filter(t=>t.status==='Blocked').length;
+  const pending=total-completed-blocked;
+  return {total, completed, blocked, pending, pct: total? Math.round(completed/total*100):0};
+}
+
+/* ---------- prioritisation ---------- */
+function scoreTask(t, now=nowMins()){
+  let s = PRI_W[t.priority]||0; const why=[];
+  why.push(`${t.priority} priority`);
+  const dl = toMins(t.deadline);
+  if(dl!==null && t.status!=='Completed'){
+    const left = dl-now;
+    if(left<0){ s+=15; why.push(`past target by ${dur(left)}`); }
+    else if(left<=120){ s+=10; why.push(`due in ${dur(left)}`); }
+    else if(left<=240){ s+=5; why.push(`due in ${dur(left)}`); }
+    else why.push(`due ${fmt12(t.deadline)}`);
+  }
+  if(t.status==='In Progress'){ s+=3; why.push('already in progress'); }
+  if(t.carryCount){ s+=t.carryCount*4; why.push(`carried forward ${t.carryCount}×`); }
+  return {s, why};
+}
+function ordered(){
+  const now=nowMins(), T=state.day.tasks;
+  const active = T.filter(t=>t.status==='Not Started'||t.status==='In Progress').map(t=>({t,...scoreTask(t,now)})).sort((a,b)=>b.s-a.s || (toMins(a.t.deadline)??9999)-(toMins(b.t.deadline)??9999));
+  const blocked = T.filter(t=>t.status==='Blocked').map(t=>({t,...scoreTask(t,now)})).sort((a,b)=>b.s-a.s);
+  const done = T.filter(t=>t.status==='Completed').sort((a,b)=>(a.completedAt||'').localeCompare(b.completedAt||''));
+  return {active, blocked, done};
+}
+
+/* ---------- mutations ---------- */
+function touch(){
+  if(state.day.report) state.day.report.stale = true;
+  state.day.confirmedAt = null; state.confirmChecked=false; state.sendMsg=null;
+  persist(); refresh();
+}
+function setStatus(id,s){
+  const t=state.day.tasks.find(x=>x.id===id); if(!t) return;
+  t.status=s; t.updatedAt=Date.now(); t.statusTouched=true;
+  if(s==='Completed'){ if(!t.completedAt) t.completedAt=hhmm(nowMins()); } else t.completedAt=null;
+  touch();
+}
+function setField(id,field,val){ const t=state.day.tasks.find(x=>x.id===id); if(!t) return; t[field]=val.trim(); t.updatedAt=Date.now(); touch(); }
+function delTask(id){ const t=state.day.tasks.find(x=>x.id===id); if(!t) return; if(!confirm(`Delete "${t.name}"?`)) return; state.day.tasks=state.day.tasks.filter(x=>x.id!==id); if(state.editingId===id) state.editingId=null; touch(); renderView(); }
+
+/* ---------- carry-forward ---------- */
+async function findCarry(){
+  const today=state.day.date;
+  const prev = Object.keys(state.history.days).filter(d=>d<today).sort().pop();
+  if(!prev) return null;
+  const h = state.history.days[prev];
+  const open = (h.tasks||[]).filter(t=>t.status!=='Completed');
+  return open.length ? {date:prev, count:open.length, reportReady:h.reportReady} : {date:prev, count:0, reportReady:h.reportReady};
+}
+async function importCarry(){
+  const pc=state.prevCarry; if(!pc) return;
+  const prevDay = await sget('day:'+pc.date);
+  if(!prevDay){ alert('The previous day’s record could not be loaded.'); return; }
+  const existing = new Set(state.day.tasks.map(t=>t.name.toLowerCase()));
+  prevDay.tasks.filter(t=>t.status!=='Completed' && !existing.has(t.name.toLowerCase())).forEach(t=>{
+    state.day.tasks.push({...t, id:uid(), carryCount:(t.carryCount||0)+1, carriedFrom:pc.date, completedAt:null, completionNote:'', statusTouched:false, createdAt:Date.now(), updatedAt:Date.now()});
+  });
+  state.day.importedFrom=pc.date; touch(); renderView();
+}
+
+/* ---------- report ---------- */
+function tomorrowRecs(day){
+  const now = EOD_MIN;
+  const open = day.tasks.filter(t=>t.status!=='Completed').map(t=>{
+    let s = PRI_W[t.priority] + ((t.carryCount||0)+1)*4; let why;
+    const dl=toMins(t.deadline); const missed = dl!==null && dl<now;
+    if(missed) s+=8;
+    if(t.status==='Blocked'){ s+=5; why=`clear the blocker first (${t.blockedReason||'reason not given'})`; }
+    else if((t.carryCount||0)>=1) why=`carried forward ${(t.carryCount||0)+1} times; consider breaking it into smaller steps`;
+    else if(missed) why=`missed today's target time of ${fmt12(t.deadline)}`;
+    else if(t.status==='In Progress') why='in progress; finish while context is fresh';
+    else why=`${t.priority.toLowerCase()} priority, not yet started`;
+    return {t,s,why};
+  }).sort((a,b)=>b.s-a.s);
+  return open.slice(0,5);
+}
+function buildReport(){
+  const d=state.day, s=stats(d), st=state.settings;
+  const subject = `Daily Task Status Report – ${fmtDateSubject(d.date)}`;
+  const done=d.tasks.filter(t=>t.status==='Completed'), pend=d.tasks.filter(t=>t.status==='Not Started'||t.status==='In Progress'), blk=d.tasks.filter(t=>t.status==='Blocked');
+  const carry=[...pend,...blk];
+  const L=[];
+  L.push('Hello,','');
+  L.push(`Please find below my task status for ${fmtDateLong(d.date)}.`,'');
+  L.push('Summary');
+  L.push(`Total tasks planned: ${s.total}`);
+  L.push(`Completed: ${s.completed}`);
+  L.push(`Pending: ${s.pending}`);
+  L.push(`Blocked: ${s.blocked}`);
+  L.push(`Completion: ${s.pct}%`,'');
+  L.push('Completed tasks');
+  if(!done.length) L.push('None.');
+  done.forEach((t,i)=>{
+    let line=`${i+1}. ${t.name} (${t.priority})`;
+    if(t.completedAt) line+=`, completed at ${fmt12(t.completedAt)}`;
+    if(t.deadline) line+= (toMins(t.completedAt)!==null && toMins(t.completedAt)>toMins(t.deadline)) ? ` (target was ${fmt12(t.deadline)})` : ', on time';
+    L.push(line);
+    if(t.completionNote) L.push(`   Details: ${t.completionNote}`);
+  });
+  L.push('');
+  L.push('Pending tasks');
+  if(!pend.length) L.push('None.');
+  pend.forEach((t,i)=>{
+    let line=`${i+1}. ${t.name} (${t.priority}, ${t.status}`; if(t.deadline) line+=`, target ${fmt12(t.deadline)}`; line+=')';
+    L.push(line); if(t.notes) L.push(`   Notes: ${t.notes}`);
+  });
+  L.push('');
+  L.push('Blocked tasks');
+  if(!blk.length) L.push('None.');
+  blk.forEach((t,i)=>{ L.push(`${i+1}. ${t.name} (${t.priority})`); L.push(`   Reason: ${t.blockedReason||'Not specified'}`); if(t.notes) L.push(`   Dependencies: ${t.notes}`); });
+  L.push('');
+  L.push('Carried forward to tomorrow');
+  if(!carry.length) L.push('None. All planned tasks were completed.');
+  carry.forEach((t,i)=>L.push(`${i+1}. ${t.name} (${t.status})${t.carryCount?`, carried ${t.carryCount+1} days running`:''}`));
+  L.push('');
+  L.push('Recommended priorities for tomorrow');
+  const recs=tomorrowRecs(d);
+  if(!recs.length) L.push('No open items. Tomorrow’s priorities will be planned fresh in the morning.');
+  recs.forEach((r,i)=>L.push(`${i+1}. ${r.t.name}: ${r.why}`));
+  L.push('');
+  L.push(`${st.signoff||'Regards'},`);
+  L.push(st.name||'[Your name]');
+  return {subject, body:L.join('\n'), generatedAt:hhmm(nowMins()), stale:false};
+}
+function generateReport(){
+  const missing = state.day.tasks.filter(t=>t.status==='Blocked' && !t.blockedReason);
+  if(missing.length){ alert(`Add a blocked reason for: ${missing.map(t=>t.name).join(', ')}`); return; }
+  state.day.report = buildReport(); state.day.confirmedAt=Date.now(); state.sendMsg=null;
+  persist(); renderView(); renderBanners();
+}
+
+/* ---------- email ---------- */
+function mailtoLink(){
+  const r=state.day.report, s=state.settings;
+  let q=`subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(r.body)}`;
+  if(s.cc) q=`cc=${encodeURIComponent(s.cc)}&`+q;
+  return `mailto:${encodeURIComponent(s.email||'')}?${q}`;
+}
+async function copyReport(){
+  const r=state.day.report; const txt=`Subject: ${r.subject}\n\n${r.body}`;
+  try{ await navigator.clipboard.writeText(txt); flash('copyBtn','Copied'); }
+  catch(e){ const ta=document.getElementById('emailBody'); if(ta){ const range=document.createRange(); range.selectNodeContents(ta); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(range);} alert('Copy is blocked here. The report text is selected; press Ctrl+C / Cmd+C.'); }
+}
+function flash(id,txt){ const b=document.getElementById(id); if(!b) return; const o=b.textContent; b.textContent=txt; setTimeout(()=>b.textContent=o,1500); }
+function markSent(){
+  const s=state.settings;
+  if(!confirm(`Record that you sent "${state.day.report.subject}" to ${s.email}? Only do this after the email has actually gone out.`)) return;
+  state.day.emailLog=(state.day.emailLog||[]);
+  state.day.emailLog.push({at:hhmm(nowMins()), to:s.email, sent:true, detail:'Recorded by you'});
+  persist(); renderView(); renderBanners();
+}
+function exportData(){
+  const data={}; allKeys().forEach(k=>data[k]=localStorage.getItem(k));
+  const blob=new Blob([JSON.stringify({app:'daily-task-manager',version:1,exportedAt:new Date().toISOString(),data},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`task-manager-backup-${todayKey()}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importData(file){
+  const r=new FileReader();
+  r.onload=async ()=>{
+    try{
+      const j=JSON.parse(r.result);
+      if(j.app!=='daily-task-manager'||!j.data) throw new Error('This is not a Daily Task Manager backup file.');
+      if(!confirm('Replace the data in this browser with the backup? Current data here will be overwritten.')) return;
+      allKeys().forEach(k=>localStorage.removeItem(k));
+      Object.entries(j.data).forEach(([k,v])=>{ if(k.startsWith(PREFIX)) localStorage.setItem(k,v); });
+      state.settings=Object.assign({name:'',email:'',cc:'',signoff:'Regards'},(await sget('settings'))||{});
+      state.history=(await sget('history'))||{days:{}};
+      await loadDay(); state.tab='today'; renderAll(); setSave('Backup restored');
+    }catch(e){ alert('Could not restore: '+e.message); }
+  };
+  r.readAsText(file);
+}
+
+/* ---------- rendering ---------- */
+function renderClock(){
+  const i=ist(); document.getElementById('clockTime').textContent=fmt12(hhmm(i.mins));
+  document.getElementById('dateLine').textContent=fmtDateLong(i.date);
+}
+function renderTimeline(){
+  const el=document.getElementById('timeline'); const now=nowMins();
+  const pos = m=>Math.max(0,Math.min(100,(m-TL_START)/(TL_END-TL_START)*100));
+  let ticks='';
+  (state.day?.tasks||[]).forEach(t=>{ const m=toMins(t.deadline); if(m===null||m<TL_START||m>TL_END) return;
+    const col = t.status==='Completed'?'var(--done)':t.status==='Blocked'?'var(--blk)':(m<now?'var(--high)':'var(--med)');
+    ticks+=`<div class="tl-tick" style="left:${pos(m)}%;background:${col}" title="${esc(t.name)} at ${fmt12(t.deadline)} (${t.status})"></div>`; });
+  let labels=''; for(let h=8;h<=21;h+=2){ labels+=`<span style="left:${pos(h*60)}%">${h%12||12} ${h>=12?'PM':'AM'}</span>`; }
+  const left = EOD_MIN-now;
+  const msg = left>0 ? `${dur(left)} until the 6:00 PM review` : (state.day?.report && !state.day.report.stale ? 'Review complete for today' : '6:00 PM review is due');
+  el.innerHTML = `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong class="small">Today’s targets</strong><span class="small muted">${msg}</span></div>
+    <div class="tl-track"><div class="tl-bar"></div><div class="tl-fill" style="width:${pos(now)}%"></div>
+    <div class="tl-eod" style="left:${pos(EOD_MIN)}%" title="6:00 PM end-of-day review"></div>${ticks}
+    <div class="tl-now" style="left:${pos(now)}%" title="Now"></div></div>
+    <div class="tl-labels">${labels}</div>
+    <div class="tl-legend"><span><i style="background:var(--med)"></i>Upcoming</span><span><i style="background:var(--high)"></i>Past target</span><span><i style="background:var(--done)"></i>Completed</span><span><i style="background:var(--blk)"></i>Blocked</span><span><i style="border-left:2px dashed var(--accent);width:2px;border-radius:0"></i>6:00 PM review</span></div>`;
+}
+function renderBanners(){
+  const el=document.getElementById('banners'); if(!state.loaded){el.innerHTML='';return;}
+  const d=state.day, out=[], now=nowMins(); const reportOk = d.report && !d.report.stale;
+  const pc=state.prevCarry;
+  if(pc && pc.count>0 && !d.importedFrom && !d.carryDismissed){
+    out.push(`<div class="banner info"><span>${pc.count} unfinished task${pc.count>1?'s':''} from ${fmtDateShort(pc.date)}. Bring ${pc.count>1?'them':'it'} into today?</span><span class="acts"><button class="btn sm" data-act="importCarry">Carry forward</button><button class="btn ghost sm" data-act="dismissCarry">Not now</button></span></div>`);
+  }
+  if(pc && pc.count>0 && !pc.reportReady && !d.carryDismissed && !d.importedFrom){
+    out.push(`<div class="banner warn"><span>The report for ${fmtDateShort(pc.date)} was never confirmed. Its tasks are shown with their last saved status.</span></div>`);
+  }
+  if(now>=EOD_MIN && d.tasks.length && !reportOk){
+    out.push(`<div class="banner warn"><span>It’s past 6:00 PM IST. Please confirm each task’s current status so the end-of-day report is accurate.</span><span class="acts"><button class="btn sm" data-act="goReport">Confirm statuses</button></span></div>`);
+  } else if(reportOk && !(d.emailLog||[]).some(e=>e.sent) && now>=EOD_MIN){
+    out.push(`<div class="banner info"><span>Today’s report is ready but hasn’t been recorded as sent.</span><span class="acts"><button class="btn sm" data-act="goReport">Open report</button></span></div>`);
+  }
+  el.innerHTML=out.join('');
+}
+function renderTabs(){
+  const tabs=[['today','Today’s tasks'],['report','End-of-day report'],['history','History and insights'],['settings','Email settings']];
+  document.getElementById('tabs').innerHTML = tabs.map(([k,l])=>`<button role="tab" aria-selected="${state.tab===k}" data-tab="${k}">${l}</button>`).join('');
+}
+function renderAll(){ renderClock(); renderTimeline(); renderBanners(); renderTabs(); renderView(); }
+function refresh(){ renderTimeline(); renderBanners(); if(state.tab==='today') renderList(); else renderView(); }
+
+function renderView(){
+  const v=document.getElementById('view');
+  if(!state.loaded){ v.innerHTML='<div class="empty">Loading your saved tasks…</div>'; return; }
+  if(state.tab==='today'){ v.innerHTML=`<div class="grid"><div class="panel" id="formWrap"></div><div id="listWrap"></div></div>`; renderForm(); renderList(); }
+  else if(state.tab==='report') v.innerHTML=reportView();
+  else if(state.tab==='history') v.innerHTML=historyView();
+  else v.innerHTML=settingsView();
+}
+
+function renderForm(){
+  const t = state.editingId ? state.day.tasks.find(x=>x.id===state.editingId) : null;
+  const val=(k,d='')=>esc(t?t[k]??d:d);
+  const st=t?t.status:'Not Started';
+  document.getElementById('formWrap').innerHTML = `
+  <h2>${t?'Edit task':'Add a task'}</h2>
+  <form id="taskForm" novalidate>
+    <div class="field"><label for="f-name">Task name</label><input type="text" id="f-name" value="${val('name')}" maxlength="120" required></div>
+    <div class="field"><label for="f-desc">Description</label><textarea id="f-desc" rows="2">${val('desc')}</textarea></div>
+    <div class="row2">
+      <div class="field"><label for="f-pri">Priority</label><select id="f-pri">${['High','Medium','Low'].map(p=>`<option ${ (t?t.priority:'Medium')===p?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="field"><label for="f-dl">Target time</label><input type="time" id="f-dl" value="${val('deadline')}"></div>
+    </div>
+    <div class="field"><label for="f-st">Current status</label><select id="f-st">${STATUSES.map(s=>`<option ${st===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field" id="g-blk" ${st==='Blocked'?'':'hidden'}><label for="f-blk">Blocked reason</label><input type="text" id="f-blk" value="${val('blockedReason')}"></div>
+    <div class="field" id="g-done" ${st==='Completed'?'':'hidden'}><label for="f-done">Completion details</label><input type="text" id="f-done" value="${val('completionNote')}" placeholder="What was delivered or decided"></div>
+    <div class="field"><label for="f-notes">Notes or dependencies</label><textarea id="f-notes" rows="2" placeholder="People, approvals or inputs this depends on">${val('notes')}</textarea></div>
+    <div class="err" id="formErr" role="alert"></div>
+    <div class="actions"><button class="btn" type="submit">${t?'Save changes':'Add task'}</button>${t?'<button class="btn ghost" type="button" data-act="cancelEdit">Cancel</button>':''}</div>
+  </form>
+  <p class="small muted" style="margin:14px 0 0">Add your important tasks for today. The list on the right is ordered by priority, time left before the target, and how many days a task has been carried forward.</p>`;
+  document.getElementById('f-name').focus();
+}
+function submitForm(e){
+  e.preventDefault();
+  const g=id=>document.getElementById(id).value.trim();
+  const name=g('f-name'), status=g('f-st'), blk=g('f-blk');
+  const errEl=document.getElementById('formErr');
+  if(!name){ errEl.textContent='Enter a task name.'; return; }
+  if(status==='Blocked' && !blk){ errEl.textContent='Add the reason this task is blocked.'; return; }
+  const data={name, desc:g('f-desc'), priority:g('f-pri'), deadline:g('f-dl'), status, notes:g('f-notes'), blockedReason: status==='Blocked'?blk:'', completionNote: status==='Completed'?g('f-done'):''};
+  if(state.editingId){
+    const t=state.day.tasks.find(x=>x.id===state.editingId);
+    if(t.status!==status){ t.statusTouched=true; t.completedAt = status==='Completed' ? (t.completedAt||hhmm(nowMins())) : null; }
+    Object.assign(t,data,{updatedAt:Date.now()}); state.editingId=null;
+  } else {
+    state.day.tasks.push({id:uid(), ...data, carryCount:0, createdAt:Date.now(), updatedAt:Date.now(), statusTouched:status!=='Not Started', completedAt: status==='Completed'?hhmm(nowMins()):null});
+  }
+  touch(); renderForm();
+}
+
+function taskCard(t, rank, why){
+  const dl=toMins(t.deadline), now=nowMins();
+  const over = dl!==null && dl<now && t.status!=='Completed' && t.status!=='Blocked';
+  return `<article class="task pr-${t.priority} ${t.status==='Completed'?'is-done':''}">
+    <div class="task-top">
+      <div style="display:flex;gap:8px">${rank?`<span class="rank">${rank}</span>`:''}<div>
+        <div class="task-name">${esc(t.name)}</div>
+        <div class="task-meta"><span class="chip p-${t.priority}">${t.priority}</span>
+          ${t.deadline?`<span class="small muted">Target ${fmt12(t.deadline)}</span>`:''}
+          ${over?`<span class="overdue">Past target</span>`:''}
+          ${t.carryCount?`<span class="small muted">Carried ${t.carryCount}×</span>`:''}
+          ${t.status==='Completed'&&t.completedAt?`<span class="small muted">Done at ${fmt12(t.completedAt)}</span>`:''}
+        </div>
+        ${why?`<div class="why">Ranked for: ${esc(why.join(', '))}</div>`:''}
+      </div></div>
+    </div>
+    ${t.desc?`<div class="task-desc">${esc(t.desc)}</div>`:''}
+    ${t.notes?`<div class="task-desc muted">Depends on: ${esc(t.notes)}</div>`:''}
+    ${t.status==='Blocked'?`<div class="inline-note"><input type="text" aria-label="Blocked reason for ${esc(t.name)}" placeholder="Why is this blocked?" value="${esc(t.blockedReason)}" data-field="blockedReason" data-id="${t.id}"></div>`:''}
+    ${t.status==='Completed'?`<div class="inline-note"><input type="text" aria-label="Completion details for ${esc(t.name)}" placeholder="Completion details (optional)" value="${esc(t.completionNote)}" data-field="completionNote" data-id="${t.id}"></div>`:''}
+    <div class="task-ctrl">
+      <select class="st ${ST_CLASS[t.status]}" aria-label="Status of ${esc(t.name)}" data-status="${t.id}">${STATUSES.map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select>
+      <button class="btn ghost sm" data-edit="${t.id}">Edit</button>
+      <button class="btn danger sm" data-del="${t.id}">Delete</button>
+    </div>
+  </article>`;
+}
+function renderList(){
+  const el=document.getElementById('listWrap'); if(!el) return;
+  const T=state.day.tasks;
+  if(!T.length){ el.innerHTML=`<div class="empty"><strong>No tasks yet for today.</strong><br>Use the form to add your important tasks, starting with the one that matters most.</div>`; return; }
+  const {active,blocked,done}=ordered(), s=stats(state.day);
+  let h=`<div class="panel" style="margin-bottom:14px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+    <span><strong class="num">${s.completed} of ${s.total}</strong> completed <span class="muted">(${s.pct}%)</span></span>
+    <span class="small muted num">${s.pending} pending, ${s.blocked} blocked</span></div>`;
+  if(active.length){
+    h+=`<div class="group"><div class="group-head"><h2 style="margin:0">Work in this order</h2></div>`;
+    if(active[0]) h+=`<p class="small muted" style="margin:-2px 0 10px">Focus next: <strong style="color:var(--text)">${esc(active[0].t.name)}</strong></p>`;
+    h+=active.map((x,i)=>taskCard(x.t,i+1,x.why)).join('')+`</div>`;
+  }
+  if(blocked.length) h+=`<div class="group"><div class="group-head"><h2 style="margin:0">Blocked, needs follow-up</h2><span class="small muted">Chase these dependencies early</span></div>${blocked.map(x=>taskCard(x.t,0,null)).join('')}</div>`;
+  if(done.length) h+=`<div class="group"><div class="group-head"><h2 style="margin:0">Completed</h2></div>${done.map(t=>taskCard(t,0,null)).join('')}</div>`;
+  el.innerHTML=h;
+}
+
+function reportView(){
+  const d=state.day, s=stats(d), now=nowMins();
+  if(!d.tasks.length) return `<div class="empty"><strong>There are no tasks to report on yet.</strong><br>Add today’s tasks first, then return here at 6:00 PM IST.<br><br><button class="btn" data-tab="today">Add tasks</button></div>`;
+  const reportOk = d.report && !d.report.stale;
+  let h=`<div class="stats">
+    <div class="stat"><b>${s.total}</b><span>Planned</span></div><div class="stat"><b>${s.completed}</b><span>Completed</span></div>
+    <div class="stat"><b>${s.pending}</b><span>Pending</span></div><div class="stat"><b>${s.blocked}</b><span>Blocked</span></div>
+    <div class="stat"><b>${s.pct}%</b><span>Completion</span></div></div>`;
+  if(!reportOk){
+    const untouched=d.tasks.filter(t=>!t.statusTouched && t.status!=='Completed');
+    h+=`<div class="panel"><h2>Step 1: Confirm today’s task statuses</h2>
+    <p class="small muted" style="margin-top:-6px">${now<EOD_MIN?`The scheduled review is at 6:00 PM IST (${dur(EOD_MIN-now)} from now). You can prepare it earlier if your day is done.`:'Check every row below. Nothing is marked completed unless you set it.'}</p>
+    ${untouched.length?`<div class="banner warn" style="margin:8px 0"><span>${untouched.length} task${untouched.length>1?'s have':' has'} not had a status update since being added: ${esc(untouched.map(t=>t.name).join(', '))}. Please confirm ${untouched.length>1?'them':'it'}.</span></div>`:''}
+    <div style="overflow-x:auto"><table><thead><tr><th>Task</th><th>Priority</th><th>Target</th><th>Status</th><th>Details or blocked reason</th></tr></thead><tbody>
+    ${d.tasks.map(t=>`<tr><td>${esc(t.name)}</td><td><span class="chip p-${t.priority}">${t.priority}</span></td><td class="num">${t.deadline?fmt12(t.deadline):'—'}</td>
+      <td><select class="st ${ST_CLASS[t.status]}" aria-label="Status of ${esc(t.name)}" data-status="${t.id}">${STATUSES.map(x=>`<option ${t.status===x?'selected':''}>${x}</option>`).join('')}</select></td>
+      <td>${t.status==='Blocked'?`<input type="text" placeholder="Required: reason" value="${esc(t.blockedReason)}" data-field="blockedReason" data-id="${t.id}">`:t.status==='Completed'?`<input type="text" placeholder="Completion details" value="${esc(t.completionNote)}" data-field="completionNote" data-id="${t.id}">`:`<span class="small muted">${esc(t.notes||'')}</span>`}</td></tr>`).join('')}
+    </tbody></table></div>
+    <label class="confirm-box"><input type="checkbox" id="confirmChk" ${state.confirmChecked?'checked':''}><span>I confirm these statuses are accurate as of ${fmt12(hhmm(now))} IST.</span></label>
+    <div class="actions"><button class="btn" data-act="generate" ${state.confirmChecked?'':'disabled'}>Prepare report</button></div>
+    ${d.report&&d.report.stale?'<p class="small muted">A task changed after the last report was prepared, so it needs to be confirmed again.</p>':''}
+    </div>`;
+    return h;
+  }
+  const r=d.report, st=state.settings, log=d.emailLog||[];
+  h+=`<div class="panel"><h2>Step 2: Review and send</h2>
+    <dl class="kv"><dt>To</dt><dd>${st.email?esc(st.email):'<span class="bad">No recipient set</span> <button class="btn ghost sm" data-tab="settings">Add email address</button>'}</dd>
+    ${st.cc?`<dt>Cc</dt><dd>${esc(st.cc)}</dd>`:''}<dt>Subject</dt><dd><strong>${esc(r.subject)}</strong></dd><dt>Prepared</dt><dd>${fmt12(r.generatedAt)} IST from confirmed statuses</dd></dl>
+    <pre class="email" id="emailBody">${esc(r.body)}</pre>
+    <div class="actions" style="margin-top:12px">
+      ${st.email?`<a class="btn" href="${mailtoLink()}" style="text-decoration:none">Open in email app</a>`:''}
+      <button class="btn ghost" id="copyBtn" data-act="copy">Copy report</button>
+      <button class="btn ghost" data-act="reconfirm">Change statuses</button>
+      ${st.email && !log.some(e=>e.sent)?`<button class="btn ghost" data-act="markSent">I’ve sent it</button>`:''}
+    </div>
+    <p class="small muted">“Open in email app” opens a pre-filled draft in your default mail app (Outlook, Gmail in the browser if set as default, Apple Mail). This page does not send email itself. After you send it, click “I’ve sent it” so your history stays accurate. If the draft doesn't open, use “Copy report” and paste it into a new email.</p>
+    ${log.length?`<h3>Sent today</h3><ul class="log">${log.filter(e=>e.sent).map(e=>`<li>${fmt12(e.at)}: recorded by you as sent to ${esc(e.to)}</li>`).join('')}</ul>`:''}
+  </div>`;
+  return h;
+}
+
+function historyView(){
+  const days=Object.values(state.history.days).filter(d=>d.total>0).sort((a,b)=>b.date.localeCompare(a.date));
+  if(days.length<1) return `<div class="empty">No records yet. Each day you use this, a record is saved here and patterns start to show after a few days.</div>`;
+  const past=days.filter(d=>d.date!==todayKey());
+  const last7=days.slice(0,7);
+  const avg=Math.round(last7.reduce((a,d)=>a+d.pct,0)/last7.length);
+  const allT=days.flatMap(d=>d.tasks.map(t=>({...t,date:d.date})));
+  // recurring carry-forwards: highest carryCount per task name
+  const carryMap={}; allT.forEach(t=>{ const k=t.name.toLowerCase(); if((t.carryCount||0)>=2 && (!carryMap[k]||t.carryCount>carryMap[k].carryCount)) carryMap[k]=t; });
+  const carries=Object.values(carryMap).sort((a,b)=>b.carryCount-a.carryCount);
+  const withDl=allT.filter(t=>t.status==='Completed'&&t.deadline&&t.completedAt);
+  const late=withDl.filter(t=>toMins(t.completedAt)>toMins(t.deadline));
+  const reasons={}; allT.filter(t=>t.status==='Blocked'&&t.blockedReason).forEach(t=>{const k=t.blockedReason.trim().toLowerCase(); reasons[k]=reasons[k]||{text:t.blockedReason,n:0}; reasons[k].n++;});
+  const reasonList=Object.values(reasons).sort((a,b)=>b.n-a.n).slice(0,5);
+  const rate=p=>{const x=allT.filter(t=>t.priority===p); return x.length?Math.round(x.filter(t=>t.status==='Completed').length/x.length*100):null;};
+  const hr=rate('High'), mr=rate('Medium'), lr=rate('Low');
+  const avgPlanned = last7.reduce((a,d)=>a+d.total,0)/last7.length, avgDone=last7.reduce((a,d)=>a+d.completed,0)/last7.length;
+  const tips=[];
+  if(days.length>=3){
+    if(avg<60) tips.push(`You complete about ${avgDone.toFixed(1)} of ${avgPlanned.toFixed(1)} planned tasks a day. Planning closer to ${Math.max(1,Math.round(avgDone+1))} key tasks may give a more realistic day.`);
+    if(hr!==null && lr!==null && hr<lr) tips.push(`High-priority tasks are completed less often (${hr}%) than low-priority ones (${lr}%). Try blocking time for High tasks in the first half of the day.`);
+    if(carries.length) tips.push(`${carries.length} task${carries.length>1?'s have':' has'} been carried forward two or more times. Break these into a smaller first step or agree a new deadline.`);
+    if(withDl.length>=3 && late.length/withDl.length>0.4) tips.push(`${late.length} of ${withDl.length} timed tasks finished after their target time. Consider adding a buffer when setting target times.`);
+    if(reasonList.length && reasonList[0].n>=2) tips.push(`“${reasonList[0].text}” has blocked work ${reasonList[0].n} times. Raise this dependency at the start of the day.`);
+    if(!tips.length) tips.push('No recurring delays detected so far. Your plan and delivery are well matched.');
+  }
+  return `<div class="stats">
+    <div class="stat"><b>${days.length}</b><span>Days recorded</span></div><div class="stat"><b>${avg}%</b><span>Average completion, last ${last7.length} days</span></div>
+    <div class="stat"><b>${hr===null?'—':hr+'%'}</b><span>High-priority completion</span></div><div class="stat"><b>${late.length}</b><span>Finished after target</span></div>
+    <div class="stat"><b>${carries.length}</b><span>Repeatedly carried</span></div></div>
+  <div class="panel" style="margin-bottom:14px"><h2>Patterns and suggestions</h2>
+    ${days.length<3?`<p class="muted small">Suggestions appear after three days of records (${days.length} so far).</p>`:tips.map(t=>`<div class="insight">${esc(t)}</div>`).join('')}
+    ${carries.length?`<h3>Recurring carry-forwards</h3><ul class="small">${carries.map(t=>`<li>${esc(t.name)}: carried ${t.carryCount} times (last on ${fmtDateShort(t.date)}, ${esc(t.status)})</li>`).join('')}</ul>`:''}
+    ${reasonList.length?`<h3>Common blockers</h3><ul class="small">${reasonList.map(r=>`<li>${esc(r.text)} (${r.n}×)</li>`).join('')}</ul>`:''}
+    ${(mr!==null||lr!==null)?`<p class="small muted">Completion by priority: High ${hr??'—'}%, Medium ${mr??'—'}%, Low ${lr??'—'}%.</p>`:''}
+  </div>
+  <div class="panel"><h2>Daily records</h2><div style="overflow-x:auto"><table><thead><tr><th>Date</th><th>Planned</th><th>Completed</th><th>Blocked</th><th>Completion</th><th>Report</th><th>Email</th></tr></thead><tbody>
+  ${days.slice(0,30).map(d=>`<tr><td>${fmtDateShort(d.date)}${d.date===todayKey()?' <span class="small muted">(today)</span>':''}</td><td class="num">${d.total}</td><td class="num">${d.completed}</td><td class="num">${d.blocked}</td><td class="num">${d.pct}%</td><td>${d.reportReady?'Confirmed':'<span class="muted">Not confirmed</span>'}</td><td>${d.emailed?'Sent':'<span class="muted">Not recorded</span>'}</td></tr>`).join('')}
+  </tbody></table></div>${past.length?'':'<p class="small muted">Only today is recorded so far.</p>'}</div>`;
+}
+
+function settingsView(){
+  const s=state.settings;
+  return `<div class="panel" style="max-width:560px"><h2>Email settings</h2>
+  <form id="setForm" novalidate>
+    <div class="field"><label for="s-name">Your name</label><input type="text" id="s-name" value="${esc(s.name)}"><div class="hint">Used to sign the report.</div></div>
+    <div class="field"><label for="s-email">Send report to</label><input type="email" id="s-email" value="${esc(s.email)}" placeholder="manager@company.com"></div>
+    <div class="field"><label for="s-cc">Cc (optional)</label><input type="text" id="s-cc" value="${esc(s.cc)}" placeholder="Separate multiple addresses with commas"></div>
+    <div class="field"><label for="s-signoff">Sign-off</label><input type="text" id="s-signoff" value="${esc(s.signoff)}"></div>
+    <div class="err" id="setErr" role="alert"></div>
+    <div class="actions"><button class="btn" type="submit" id="setSave">Save settings</button></div>
+  </form>
+  <p class="small muted" style="margin-top:14px">Review time is fixed at 6:00 PM IST. The reminder appears when this page is open; nothing is sent automatically.</p></div>
+  <div class="panel" style="max-width:560px;margin-top:14px"><h2>Your data</h2>
+  <p class="small muted" style="margin-top:-6px">Tasks and history are saved only in this browser on this device. Clearing browser data deletes them. Download a backup regularly, or to move to another device.</p>
+  <div class="actions"><button class="btn ghost" data-act="export">Download backup</button>
+  <label class="btn ghost" style="display:inline-block">Restore from backup<input type="file" id="importFile" accept="application/json,.json" hidden></label></div></div>`;
+}
+async function saveSettings(e){
+  e.preventDefault(); const g=id=>document.getElementById(id).value.trim();
+  const email=g('s-email'), err=document.getElementById('setErr');
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent='Enter a valid email address.'; return; }
+  state.settings={name:g('s-name'), email, cc:g('s-cc'), signoff:g('s-signoff')||'Regards'};
+  const ok=await sset('settings',state.settings);
+  err.textContent=''; flash('setSave', ok?'Saved':'Could not save');
+  if(state.day.report && !state.day.report.stale){ state.day.report=buildReport(); state.day.report.generatedAt=state.day.report.generatedAt; persist(); }
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button,[data-tab]'); if(!b) return;
+  if(b.dataset.tab){ state.tab=b.dataset.tab; state.editingId=null; renderTabs(); renderView(); return; }
+  if(b.dataset.edit){ state.editingId=b.dataset.edit; renderForm(); document.getElementById('formWrap').scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  if(b.dataset.del){ delTask(b.dataset.del); return; }
+  const a=b.dataset.act;
+  if(a==='cancelEdit'){ state.editingId=null; renderForm(); }
+  else if(a==='importCarry') importCarry();
+  else if(a==='dismissCarry'){ state.day.carryDismissed=true; persist(); renderBanners(); }
+  else if(a==='goReport'){ state.tab='report'; renderTabs(); renderView(); }
+  else if(a==='generate') generateReport();
+  else if(a==='copy') copyReport();
+  else if(a==='markSent') markSent();
+  else if(a==='export') exportData();
+  else if(a==='reconfirm'){ state.day.report.stale=true; state.day.confirmedAt=null; state.confirmChecked=false; persist(); renderView(); renderBanners(); renderTimeline(); }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='f-st'){ document.getElementById('g-blk').hidden = t.value!=='Blocked'; document.getElementById('g-done').hidden = t.value!=='Completed'; return; }
+  if(t.id==='importFile'){ if(t.files[0]) importData(t.files[0]); t.value=''; return; }
+  if(t.id==='confirmChk'){ state.confirmChecked=t.checked; renderView(); return; }
+  if(t.dataset.status){ setStatus(t.dataset.status,t.value); return; }
+  if(t.dataset.field){ setField(t.dataset.id,t.dataset.field,t.value); return; }
+});
+document.addEventListener('submit',e=>{ if(e.target.id==='taskForm') submitForm(e); else if(e.target.id==='setForm') saveSettings(e); });
+
+/* ---------- init & tick ---------- */
+async function loadDay(){
+  const t=todayKey();
+  state.day = (await sget('day:'+t)) || newDay(t);
+  state.prevCarry = await findCarry();
+}
+async function init(){
+  renderClock(); renderView();
+  state.settings = Object.assign(state.settings, (await sget('settings'))||{});
+  state.history = (await sget('history')) || {days:{}};
+  await loadDay();
+  state.loaded=true; renderAll();
+  setInterval(async ()=>{
+    if(state.day && todayKey()!==state.day.date){ await loadDay(); state.editingId=null; renderAll(); return; }
+    renderClock(); renderTimeline(); renderBanners();
+  },30000);
+}
+init();
+</script>
+</body>
+</html>
